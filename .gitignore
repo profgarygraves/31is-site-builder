@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Environment overrides at the repo root (Laravel's own .env is gitignored
+# inside web/.gitignore by default).
+/.env
+
+# Misc local
+/tmp/
+/.cache/
