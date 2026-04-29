@@ -4,7 +4,7 @@
  *
  * Usage:
  *   1. Make sure web/.env exists and SETUP_TOKEN is set to a long random
- *      string.
+ *      string (≥ 16 chars).
  *   2. Visit https://your-domain/setup.php?t=YOUR_SETUP_TOKEN
  *   3. Read the output. If "DONE", DELETE THIS FILE immediately.
  *
@@ -22,6 +22,11 @@ declare(strict_types=1);
 // Bootstrap Laravel
 require __DIR__ . '/../vendor/autoload.php';
 $app = require_once __DIR__ . '/../bootstrap/app.php';
+
+// In Laravel 11, env() returns null when called before any kernel
+// bootstrapper runs. Trigger LoadEnvironmentVariables explicitly so
+// our SETUP_TOKEN check can read .env.
+$app->bootstrapWith([\Illuminate\Foundation\Bootstrap\LoadEnvironmentVariables::class]);
 
 // Token gate — must match SETUP_TOKEN in .env. Short-circuits before any
 // real work if the caller doesn't know the token.
