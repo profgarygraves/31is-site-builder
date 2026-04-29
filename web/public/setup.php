@@ -2,35 +2,36 @@
 /**
  * One-time setup runner for cPanel installs without shell access.
  *
- * Usage:
- *   1. Make sure web/.env exists and SETUP_TOKEN is set to a long random
- *      string (≥ 16 chars).
- *   2. Visit https://your-domain/setup.php?t=YOUR_SETUP_TOKEN
- *   3. Read the output. If "DONE", DELETE THIS FILE immediately.
+ * Token-gated by SETUP_TOKEN in web/.env. After a successful run,
+ * delete this file.
  *
- * What it does (idempotent — safe to re-run):
- *   - generates APP_KEY if missing
- *   - runs database migrations + seeders
- *   - caches config / routes / views (production performance)
- *
- * Why a script instead of `php artisan ...`: GoDaddy reseller cPanel
- * plans often disable shell access. This is the fallback.
+ * We read SETUP_TOKEN directly from the .env file (not via Laravel's
+ * env() helper) BEFORE bootstrapping the framework. Reason: any partial
+ * bootstrap would mark Application::hasBeenBootstrapped() = true, which
+ * then prevents the Console Kernel from running its full bootstrap
+ * sequence — and that full bootstrap is what registers the artisan
+ * commands we're about to call.
  */
 
 declare(strict_types=1);
 
-// Bootstrap Laravel
-require __DIR__ . '/../vendor/autoload.php';
-$app = require_once __DIR__ . '/../bootstrap/app.php';
+$envPath = __DIR__ . '/../.env';
 
-// In Laravel 11, env() returns null when called before any kernel
-// bootstrapper runs. Trigger LoadEnvironmentVariables explicitly so
-// our SETUP_TOKEN check can read .env.
-$app->bootstrapWith([\Illuminate\Foundation\Bootstrap\LoadEnvironmentVariables::class]);
+// 1) Token check — read .env directly, no Laravel involved yet.
+if (!is_readable($envPath)) {
+    http_response_code(503);
+    header('Content-Type: text/plain; charset=UTF-8');
+    exit("web/.env not found at " . realpath(__DIR__ . '/..') . "/.env\n");
+}
 
-// Token gate — must match SETUP_TOKEN in .env. Short-circuits before any
-// real work if the caller doesn't know the token.
-$expected = (string) env('SETUP_TOKEN', '');
+$expected = '';
+foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+    if (preg_match('/^\s*SETUP_TOKEN\s*=\s*(.+?)\s*$/', $line, $m)) {
+        $expected = trim($m[1], "\"'");
+        break;
+    }
+}
+
 $supplied = (string) ($_GET['t'] ?? '');
 if ($expected === '' || strlen($expected) < 16 || !hash_equals($expected, $supplied)) {
     http_response_code(403);
@@ -44,9 +45,13 @@ if ($expected === '' || strlen($expected) < 16 || !hash_equals($expected, $suppl
     exit;
 }
 
-// Run setup tasks
-header('Content-Type: text/plain; charset=UTF-8');
+// 2) Token valid — bootstrap Laravel from scratch and run setup tasks.
+require __DIR__ . '/../vendor/autoload.php';
+$app = require_once __DIR__ . '/../bootstrap/app.php';
+
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+header('Content-Type: text/plain; charset=UTF-8');
 
 $tasks = [
     ['key:generate', ['--force' => true]],
@@ -73,4 +78,4 @@ foreach ($tasks as [$cmd, $args]) {
 }
 
 echo "==> DONE\n";
-echo "Delete web/public/setup.php now (File Manager → right-click → Delete).\n";
+echo "Delete web/public/setup.php (and env-check.php) now.\n";
