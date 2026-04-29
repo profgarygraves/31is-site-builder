@@ -19,7 +19,7 @@ class SitePolicy
 
     public function create(User $user): bool
     {
-        return $user->sites()->count() < User::SITE_LIMIT;
+        return ! $user->hasReachedSiteLimit();
     }
 
     public function update(User $user, Site $site): bool

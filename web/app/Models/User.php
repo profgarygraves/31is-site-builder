@@ -13,8 +13,24 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    /** Cap on subdomains per user — anti-squatting for MVP. */
-    public const SITE_LIMIT = 3;
+    /**
+     * Cap on subdomains per user. Returns null when unlimited.
+     * Tune via `USER_SITE_LIMIT` in .env (0 or empty = unlimited).
+     */
+    public static function siteLimit(): ?int
+    {
+        $v = config('app.user_site_limit');
+        if ($v === null || $v === '' || (int) $v <= 0) {
+            return null;
+        }
+        return (int) $v;
+    }
+
+    public function hasReachedSiteLimit(): bool
+    {
+        $limit = self::siteLimit();
+        return $limit !== null && $this->sites()->count() >= $limit;
+    }
 
     public function sites(): HasMany
     {

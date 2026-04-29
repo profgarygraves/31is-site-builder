@@ -35,6 +35,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Per-user site cap
+    |--------------------------------------------------------------------------
+    |
+    | Maximum number of subdomains a single user can claim. Set to 0 (or
+    | leave blank) to disable the cap entirely. Useful as an anti-squatting
+    | guardrail in production; usually unlimited in dev.
+    |
+    */
+
+    'user_site_limit' => env('USER_SITE_LIMIT', 0),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

@@ -40,9 +40,9 @@ class SiteController extends Controller
     {
         $user = $request->user();
 
-        if ($user->sites()->count() >= \App\Models\User::SITE_LIMIT) {
+        if ($user->hasReachedSiteLimit()) {
             return back()->withErrors([
-                'subdomain' => 'You have reached the limit of '.\App\Models\User::SITE_LIMIT.' sites.',
+                'subdomain' => 'You have reached the limit of '.\App\Models\User::siteLimit().' sites.',
             ])->withInput();
         }
 
