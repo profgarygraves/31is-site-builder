@@ -53,9 +53,14 @@ $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 
 header('Content-Type: text/plain; charset=UTF-8');
 
+// Use migrate:fresh when ?fresh=1 is supplied — drops ALL tables and
+// re-migrates from scratch. Useful when a prior partial install left
+// orphan tables that confuse normal `migrate`.
+$migrateCmd = isset($_GET['fresh']) ? 'migrate:fresh' : 'migrate';
+
 $tasks = [
     ['key:generate', ['--force' => true]],
-    ['migrate',      ['--force' => true]],
+    [$migrateCmd,    ['--force' => true]],
     ['db:seed',      ['--force' => true]],
     ['config:cache', []],
     ['route:cache',  []],
