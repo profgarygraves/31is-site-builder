@@ -48,6 +48,9 @@ cd "$LIVE"
 echo "==> Migrations (force, no seed — seed only on first install)"
 "$PHP" artisan migrate --force
 
+echo "==> Ensure public storage symlink (idempotent)"
+"$PHP" artisan storage:link 2>&1 | grep -v "already exists" || true
+
 echo "==> Rebuild caches"
 "$PHP" artisan config:cache
 "$PHP" artisan route:cache

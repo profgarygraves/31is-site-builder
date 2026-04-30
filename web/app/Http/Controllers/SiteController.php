@@ -105,12 +105,13 @@ class SiteController extends Controller
                 $templateData = $ai->fillTemplate($brief);
             } catch (\Throwable $e) {
                 report($e);
-                // Fall back to a generic preset so the user isn't blocked.
-                $preset = Presets::find('coming-soon-minimal');
-                $templateData = array_merge($preset['template_data'], [
-                    'brand_name' => 'YOUR BRAND',
-                ]);
-                session()->flash('status', 'AI assist is unavailable right now — we started you with a blank template instead.');
+                // Send the user back to the create page with the actual error
+                // message in the validation errors. Helps them (and us) see
+                // what's wrong instead of silently falling back to a blank
+                // template, which is more confusing than a clear error.
+                return back()->withErrors([
+                    'ai_brief' => 'AI generation failed: '.$e->getMessage().' — try again, or pick a template card to start from sample content instead.',
+                ])->withInput();
             }
         }
         // else: 'html' path — nothing to seed; editor shows the textarea.

@@ -4,6 +4,7 @@ use App\Http\Controllers\LeadController;
 use App\Http\Controllers\LeadExportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SiteController;
+use App\Http\Controllers\SiteImageController;
 use App\Http\Controllers\SiteResolverController;
 use Illuminate\Support\Facades\Route;
 
@@ -45,6 +46,12 @@ Route::domain($appSub.'.'.$parent)->group(function () {
         Route::resource('sites', SiteController::class);
         Route::get('/sites/{site}/leads.csv', LeadExportController::class)
             ->name('sites.leads.csv');
+
+        // Hero-image upload endpoints (AJAX from the editor view)
+        Route::post('/sites/{site}/images', [SiteImageController::class, 'store'])
+            ->name('sites.images.store');
+        Route::delete('/sites/{site}/images/{filename}', [SiteImageController::class, 'destroy'])
+            ->name('sites.images.destroy');
 
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

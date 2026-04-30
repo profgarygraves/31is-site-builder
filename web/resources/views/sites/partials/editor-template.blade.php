@@ -74,10 +74,47 @@
         <label><span class="tpl-label">Sub-line (under CTA)</span>
             <input class="tpl-input" type="text" name="template_data[hero][subline]" value="{{ $hero['subline'] ?? '' }}" placeholder="4-pack, 5 fl oz each"></label>
     </div>
-    <label class="block mt-3"><span class="tpl-label">Product image URLs (one per line, 3–5 images)</span>
-        <textarea class="tpl-textarea" rows="4" name="template_data[hero][images_text]"
-                  placeholder="https://example.com/image1.jpg
-https://example.com/image2.jpg">{{ is_array($heroImages) ? implode("\n", $heroImages) : '' }}</textarea></label>
+    {{-- Hero images: upload + URL list, both feed into hero.images --}}
+    <div class="block mt-3">
+        <span class="tpl-label">Product images</span>
+        <p class="text-xs text-gray-500 mb-2">
+            Up to 5 images. Recommended ~800×800px, under 500&nbsp;KB each.
+            Got a big one? Compress at <a href="https://tinypng.com" target="_blank" class="text-orange-600 underline">tinypng.com</a> first.
+        </p>
+
+        {{-- Drop a small CSRF + endpoint config the JS picks up --}}
+        <div id="image-uploader"
+             data-csrf="{{ csrf_token() }}"
+             data-upload-url="{{ route('sites.images.store', $site) }}"
+             data-delete-url="{{ route('sites.images.destroy', ['site' => $site, 'filename' => '__NAME__']) }}">
+
+            <div class="flex items-center gap-3 mb-3">
+                <label class="inline-flex items-center px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold rounded-md cursor-pointer">
+                    + Upload an image
+                    <input type="file" id="image-file-input" accept="image/jpeg,image/png,image/webp,image/gif" class="sr-only">
+                </label>
+                <span id="image-upload-status" class="text-xs text-gray-600"></span>
+            </div>
+
+            {{-- Live thumbnail grid (also serves as the source of truth for save) --}}
+            <div id="image-thumb-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+                @foreach ($heroImages as $url)
+                    <div class="relative group" data-image-url="{{ $url }}">
+                        <img src="{{ $url }}" alt="" class="w-full aspect-square object-cover rounded border border-gray-200">
+                        <button type="button" data-remove-image
+                                class="absolute -top-1.5 -right-1.5 bg-white border border-gray-300 rounded-full w-6 h-6 text-xs font-bold text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-700"
+                                aria-label="Remove image">×</button>
+                    </div>
+                @endforeach
+            </div>
+
+            <p class="text-xs text-gray-500">Or paste image URLs (one per line) — useful for stock photos:</p>
+            <textarea class="tpl-textarea mt-1" rows="3" name="template_data[hero][images_text]"
+                      id="image-urls-textarea"
+                      placeholder="https://example.com/image1.jpg
+https://example.com/image2.jpg">{{ is_array($heroImages) ? implode("\n", $heroImages) : '' }}</textarea>
+        </div>
+    </div>
     <label class="block mt-3"><span class="tpl-label">Description paragraph</span>
         <textarea class="tpl-textarea" rows="3" name="template_data[hero][description]" placeholder="Tell people what your product does and why it matters.">{{ $hero['description'] ?? '' }}</textarea></label>
 
@@ -184,3 +221,136 @@ https://example.com/image2.jpg">{{ is_array($heroImages) ? implode("\n", $heroIm
         </label>
     </div>
 </div>
+
+<script>
+(function () {
+    const root = document.getElementById('image-uploader');
+    if (!root) return;
+    const csrf = root.dataset.csrf;
+    const uploadUrl = root.dataset.uploadUrl;
+    const deleteUrlTpl = root.dataset.deleteUrl;
+    const fileInput = document.getElementById('image-file-input');
+    const grid = document.getElementById('image-thumb-grid');
+    const textarea = document.getElementById('image-urls-textarea');
+    const status = document.getElementById('image-upload-status');
+
+    const MAX_IMAGES = 5;
+    const SOFT_KB = 500;     // warn above this
+    const HARD_BYTES = 4 * 1024 * 1024; // server's cap
+
+    // Wire up existing remove buttons (rendered server-side)
+    grid.querySelectorAll('[data-remove-image]').forEach(b => bindRemove(b));
+
+    fileInput.addEventListener('change', async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        fileInput.value = '';   // allow re-selecting the same file
+
+        // Count check
+        const current = grid.querySelectorAll('[data-image-url]').length;
+        if (current >= MAX_IMAGES) {
+            alert(`Already at the ${MAX_IMAGES}-image limit. Remove one before adding another.`);
+            return;
+        }
+
+        // Type check
+        if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) {
+            alert('Use JPG, PNG, WebP, or GIF.');
+            return;
+        }
+
+        // Size checks
+        if (file.size > HARD_BYTES) {
+            alert(`File is ${(file.size / 1024 / 1024).toFixed(1)} MB — too large. Max 4 MB. Compress at tinypng.com first.`);
+            return;
+        }
+        const sizeKB = Math.round(file.size / 1024);
+        if (sizeKB > SOFT_KB) {
+            const ok = confirm(`File is ${sizeKB} KB — recommend compressing at tinypng.com first (target under ${SOFT_KB} KB).\n\nUpload anyway?`);
+            if (!ok) return;
+        }
+
+        // Upload
+        status.textContent = `Uploading ${file.name}...`;
+        const fd = new FormData();
+        fd.append('image', file);
+        fd.append('_token', csrf);
+
+        try {
+            const res = await fetch(uploadUrl, {
+                method: 'POST',
+                body: fd,
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                credentials: 'same-origin',
+            });
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+            }
+            const json = await res.json();
+            addThumb(json.url);
+            status.textContent = `Uploaded (${(json.size_bytes / 1024).toFixed(0)} KB). Save the form to publish.`;
+            setTimeout(() => { status.textContent = ''; }, 4000);
+        } catch (e) {
+            status.textContent = '';
+            alert('Upload failed: ' + e.message);
+        }
+    });
+
+    function addThumb(url) {
+        const wrap = document.createElement('div');
+        wrap.className = 'relative group';
+        wrap.dataset.imageUrl = url;
+        wrap.innerHTML = `
+            <img src="${escapeHtml(url)}" alt="" class="w-full aspect-square object-cover rounded border border-gray-200">
+            <button type="button" data-remove-image
+                    class="absolute -top-1.5 -right-1.5 bg-white border border-gray-300 rounded-full w-6 h-6 text-xs font-bold text-gray-700 hover:bg-red-50 hover:border-red-300 hover:text-red-700"
+                    aria-label="Remove image">×</button>
+        `;
+        grid.appendChild(wrap);
+        bindRemove(wrap.querySelector('[data-remove-image]'));
+        appendUrlToTextarea(url);
+    }
+
+    function bindRemove(btn) {
+        btn.addEventListener('click', async () => {
+            const wrap = btn.closest('[data-image-url]');
+            if (!wrap) return;
+            const url = wrap.dataset.imageUrl;
+
+            // If it's an uploaded file (under /storage/sites/), delete from disk too
+            const m = url.match(/\/storage\/sites\/\d+\/([A-Za-z0-9_.-]+)$/);
+            if (m) {
+                const filename = m[1];
+                const delUrl = deleteUrlTpl.replace('__NAME__', encodeURIComponent(filename));
+                try {
+                    await fetch(delUrl, {
+                        method: 'DELETE',
+                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                        credentials: 'same-origin',
+                    });
+                } catch (e) { /* swallow — best-effort cleanup */ }
+            }
+
+            // Remove from grid + textarea regardless
+            removeUrlFromTextarea(url);
+            wrap.remove();
+        });
+    }
+
+    function appendUrlToTextarea(url) {
+        const cur = textarea.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        if (!cur.includes(url)) cur.push(url);
+        textarea.value = cur.join('\n');
+    }
+
+    function removeUrlFromTextarea(url) {
+        const cur = textarea.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+        textarea.value = cur.filter(u => u !== url).join('\n');
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+})();
+</script>

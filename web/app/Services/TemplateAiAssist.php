@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -20,33 +21,53 @@ use RuntimeException;
  */
 class TemplateAiAssist
 {
-    private const MODEL = 'claude-sonnet-4-5';
+    /**
+     * Model ID. Use the bare alias (no date suffix) per Anthropic's docs.
+     * `claude-opus-4-7` is the recommended default — best quality for this
+     * one-shot generation use case. Override per-environment via the
+     * ANTHROPIC_MODEL env if you want to swap to claude-sonnet-4-6 (cheaper)
+     * or claude-haiku-4-5 (cheapest, less capable).
+     */
+    private const DEFAULT_MODEL = 'claude-opus-4-7';
     private const ENDPOINT = 'https://api.anthropic.com/v1/messages';
 
     public function fillTemplate(string $brief): array
     {
         $apiKey = config('services.anthropic.api_key');
         if (! $apiKey) {
-            throw new RuntimeException('ANTHROPIC_API_KEY is not configured.');
+            throw new RuntimeException('ANTHROPIC_API_KEY is not configured in .env (or the config cache is stale — run php artisan config:cache).');
         }
 
-        $response = Http::withHeaders([
-            'x-api-key' => $apiKey,
-            'anthropic-version' => '2023-06-01',
-            'content-type' => 'application/json',
-        ])->timeout(60)->post(self::ENDPOINT, [
-            'model' => self::MODEL,
-            'max_tokens' => 4096,
+        $model = config('services.anthropic.model', self::DEFAULT_MODEL);
+
+        $payload = [
+            'model' => $model,
+            'max_tokens' => 8192,
             'system' => $this->systemPrompt(),
             'tools' => [$this->toolDefinition()],
             'tool_choice' => ['type' => 'tool', 'name' => 'fill_landing_page'],
             'messages' => [
                 ['role' => 'user', 'content' => "Draft a pre-launch landing page for the following business idea:\n\n{$brief}"],
             ],
-        ]);
+        ];
+
+        Log::info('TemplateAiAssist: calling Claude', ['model' => $model, 'brief_length' => mb_strlen($brief)]);
+
+        $response = Http::withHeaders([
+            'x-api-key' => $apiKey,
+            'anthropic-version' => '2023-06-01',
+            'content-type' => 'application/json',
+        ])->timeout(90)->post(self::ENDPOINT, $payload);
 
         if (! $response->successful()) {
-            throw new RuntimeException('Claude API error: '.$response->status().' '.$response->body());
+            // Log full body so we can see the actual API error (model not found,
+            // rate limit, invalid request, auth, etc.) instead of guessing.
+            $body = $response->body();
+            Log::error('TemplateAiAssist: Claude API error', [
+                'status' => $response->status(),
+                'body' => mb_substr($body, 0, 2000),
+            ]);
+            throw new RuntimeException('Claude API error '.$response->status().': '.mb_substr($body, 0, 500));
         }
 
         $body = $response->json();
@@ -56,7 +77,8 @@ class TemplateAiAssist
             }
         }
 
-        throw new RuntimeException('Claude did not return the expected tool_use block.');
+        Log::error('TemplateAiAssist: no tool_use block in response', ['body' => mb_substr(json_encode($body), 0, 2000)]);
+        throw new RuntimeException('Claude responded without the expected fill_landing_page tool call.');
     }
 
     private function systemPrompt(): string

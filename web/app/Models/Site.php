@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Site extends Model
 {
@@ -37,6 +38,21 @@ class Site extends Model
             'is_published' => 'boolean',
             'user_id' => 'integer',
         ];
+    }
+
+    /**
+     * Clean up the site's uploaded image directory when the site is deleted.
+     * Lead rows are handled by the foreign-key cascade in the migration; the
+     * image files live on disk and need an explicit cleanup pass.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (Site $site) {
+            $dir = "sites/{$site->id}";
+            if (Storage::disk('public')->exists($dir)) {
+                Storage::disk('public')->deleteDirectory($dir);
+            }
+        });
     }
 
     public function user(): BelongsTo

@@ -30,6 +30,10 @@ return [
 
     'anthropic' => [
         'api_key' => env('ANTHROPIC_API_KEY'),
+        // Override per-environment if you want to swap models. Bare aliases
+        // only — never append date suffixes (e.g. claude-opus-4-7-20260409
+        // is NOT a real model ID; that 404s).
+        'model' => env('ANTHROPIC_MODEL', 'claude-opus-4-7'),
     ],
 
     'slack' => [
