@@ -71,7 +71,7 @@ In rough priority order:
 
 1. **HTTPS via Cloudflare** — free wildcard SSL, 15-min setup
 2. **Auto-provision subdomains** — call cPanel UAPI from `SiteController::store` so adding students doesn't need cPanel clicks
-3. **Image upload** — direct upload to `storage/app/public/uploads/`, served via a `Storage::url()` symlink
+3. **AI image generation** — let students describe an image (e.g. *"hero shot of a hot sauce bottle on a wooden cutting board"*) and Claude / DALL-E / Stable Diffusion generates it. Save into the same `storage/sites/{id}/` directory image upload uses.
 4. **More templates** — service-business, restaurant menu, freelancer portfolio
 5. **Per-site analytics** — page views, form-conversion rate
 6. **Lead webhooks** — push leads to Zapier / Slack / Google Sheets

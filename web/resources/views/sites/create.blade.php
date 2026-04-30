@@ -93,14 +93,32 @@
             <div id="aiModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
                 <div class="absolute inset-0 bg-black/50" id="aiBackdrop"></div>
                 <div class="relative bg-white rounded-lg shadow-2xl max-w-lg w-full p-6">
-                    <h3 class="font-semibold text-lg mb-2">Tell Claude what you're selling</h3>
-                    <p class="text-sm text-gray-600 mb-4">A sentence or two is enough. Claude will draft the title, copy, features, and FAQ — you can edit everything afterward.</p>
-                    <textarea id="aiBriefInput" rows="5" class="w-full rounded-md border-gray-300 focus:ring-orange-500 focus:border-orange-500 text-sm"
-                              placeholder="A subscription box for small-batch hot sauces, focused on the daring chili-head looking for variety beyond what's on the grocery shelf."></textarea>
-                    <div class="flex justify-end gap-2 mt-4">
-                        <button type="button" id="aiCancel" class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md">Cancel</button>
-                        <button type="button" id="aiSubmit" class="px-4 py-2 text-sm bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-md">Generate →</button>
+
+                    {{-- Default state: brief input --}}
+                    <div id="aiBriefState">
+                        <h3 class="font-semibold text-lg mb-2">Tell Claude what you're selling</h3>
+                        <p class="text-sm text-gray-600 mb-4">A sentence or two is enough. Claude will draft the title, copy, features, and FAQ — you can edit everything afterward.</p>
+                        <textarea id="aiBriefInput" rows="5" class="w-full rounded-md border-gray-300 focus:ring-orange-500 focus:border-orange-500 text-sm"
+                                  placeholder="A subscription box for small-batch hot sauces, focused on the daring chili-head looking for variety beyond what's on the grocery shelf."></textarea>
+                        <div class="flex justify-end gap-2 mt-4">
+                            <button type="button" id="aiCancel" class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md">Cancel</button>
+                            <button type="button" id="aiSubmit" class="px-4 py-2 text-sm bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-md">Generate →</button>
+                        </div>
                     </div>
+
+                    {{-- Loading state: shown while Claude drafts --}}
+                    <div id="aiLoadingState" class="hidden text-center py-8">
+                        <div class="inline-flex items-center justify-center mb-4">
+                            <svg class="animate-spin h-12 w-12 text-orange-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-lg mb-1">Claude is drafting your page</h3>
+                        <p class="text-sm text-gray-600">Writing the hero, features, comparison, FAQ, and lead form.</p>
+                        <p class="text-xs text-gray-500 mt-3" id="aiLoadingSubtext">This usually takes 15&ndash;30 seconds. Don't refresh.</p>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -114,9 +132,40 @@
         const aiBriefField = document.getElementById('ai_brief');
         const aiModal = document.getElementById('aiModal');
         const aiBriefInput = document.getElementById('aiBriefInput');
+        const aiBriefState = document.getElementById('aiBriefState');
+        const aiLoadingState = document.getElementById('aiLoadingState');
+        const aiLoadingSubtext = document.getElementById('aiLoadingSubtext');
 
         function isFormValid() {
             return form.reportValidity();
+        }
+
+        // Disable every path card so the user can't double-submit.
+        function lockUI() {
+            document.querySelectorAll('button[data-source]').forEach(b => {
+                b.disabled = true;
+                b.style.opacity = '0.5';
+                b.style.cursor = 'not-allowed';
+            });
+        }
+
+        // Switch the AI modal from brief-input to loading state and start a
+        // friendly time counter so the user knows things are still happening.
+        let aiTimerInterval = null;
+        function showAiLoading() {
+            aiBriefState.classList.add('hidden');
+            aiLoadingState.classList.remove('hidden');
+            const start = Date.now();
+            aiTimerInterval = setInterval(() => {
+                const secs = Math.floor((Date.now() - start) / 1000);
+                if (secs < 30) {
+                    aiLoadingSubtext.innerHTML = `Drafting (${secs}s) &mdash; usually takes 15&ndash;30 seconds.`;
+                } else if (secs < 60) {
+                    aiLoadingSubtext.innerHTML = `Drafting (${secs}s) &mdash; almost there, hang on.`;
+                } else {
+                    aiLoadingSubtext.innerHTML = `Drafting (${secs}s) &mdash; this is taking longer than usual. Still working.`;
+                }
+            }, 1000);
         }
 
         document.querySelectorAll('button[data-source]').forEach(btn => {
@@ -127,9 +176,11 @@
                 if (source === 'template') {
                     sourceField.value = 'template';
                     presetField.value = btn.dataset.preset;
+                    lockUI();
                     form.submit();
                 } else if (source === 'html') {
                     sourceField.value = 'html';
+                    lockUI();
                     form.submit();
                 } else if (source === 'ai') {
                     aiModal.classList.remove('hidden');
@@ -144,6 +195,8 @@
             aiModal.classList.remove('flex');
         });
         document.getElementById('aiBackdrop').addEventListener('click', () => {
+            // Don't dismiss while loading — clicking outside should not cancel
+            if (!aiLoadingState.classList.contains('hidden')) return;
             aiModal.classList.add('hidden');
             aiModal.classList.remove('flex');
         });
@@ -152,6 +205,8 @@
             if (brief.length < 10) { aiBriefInput.focus(); return; }
             sourceField.value = 'ai';
             aiBriefField.value = brief;
+            lockUI();
+            showAiLoading();
             form.submit();
         });
     })();
