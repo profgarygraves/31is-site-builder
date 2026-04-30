@@ -41,8 +41,8 @@ class Presets
         return [
             'key' => 'prelaunch-product',
             'title' => 'Pre-launch product',
-            'subtitle' => 'Physical product validation — Scorch / Heirloom Harvest style',
-            'emoji' => '🌶️',
+            'subtitle' => 'A physical product you ship to customers. Replace the sample content with yours.',
+            'emoji' => '📦',
             'gradient' => 'linear-gradient(135deg, #ff6a1a, #c4321b)',
             'template_id' => 'prelaunch_v1',
             'template_data' => [
@@ -117,7 +117,7 @@ class Presets
         return [
             'key' => 'saas-app',
             'title' => 'SaaS / app launch',
-            'subtitle' => 'For software, web apps, or digital products',
+            'subtitle' => 'A software or web app. Replace the sample content with yours.',
             'emoji' => '🚀',
             'gradient' => 'linear-gradient(135deg, #6366f1, #1e1b4b)',
             'template_id' => 'prelaunch_v1',
@@ -194,7 +194,7 @@ class Presets
         return [
             'key' => 'service-business',
             'title' => 'Service / agency',
-            'subtitle' => 'Consulting, freelance, or done-for-you services',
+            'subtitle' => 'A service business — consulting, freelance, agency. Replace the sample content with yours.',
             'emoji' => '💼',
             'gradient' => 'linear-gradient(135deg, #0ea5e9, #0c4a6e)',
             'template_id' => 'prelaunch_v1',
@@ -271,7 +271,7 @@ class Presets
         return [
             'key' => 'coming-soon-minimal',
             'title' => 'Coming soon (minimal)',
-            'subtitle' => 'Just a hero, a tagline, and a signup. Nothing else.',
+            'subtitle' => 'Bare minimum: title, tagline, email signup. Mostly empty — fill in just what you need.',
             'emoji' => '🚧',
             'gradient' => 'linear-gradient(135deg, #18181b, #52525b)',
             'template_id' => 'prelaunch_v1',
