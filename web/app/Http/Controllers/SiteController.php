@@ -46,6 +46,18 @@ class SiteController extends Controller
             ])->withInput();
         }
 
+        // If the user already owns a site with this subdomain, take them
+        // there instead of erroring with "already taken" — common when
+        // someone clicks a template card, hits Back, and tries another
+        // template with the same name.
+        $existing = $user->sites()
+            ->where('subdomain', strtolower((string) $request->input('subdomain', '')))
+            ->first();
+        if ($existing) {
+            return redirect()->route('sites.edit', $existing)
+                ->with('status', "You already have a site at {$existing->subdomain}.31is.com — opened it for editing. Want a fresh start? Delete it from your dashboard.");
+        }
+
         // The form submits source_type as one of: 'template', 'ai', 'html'.
         // 'ai' is internally a template-based site; the difference is just
         // whether template_data comes from a preset or from a Claude call.
@@ -66,6 +78,7 @@ class SiteController extends Controller
         ], [
             'subdomain.regex' => 'Subdomain must be lowercase letters, numbers, and dashes (3–32 chars, no leading/trailing dash).',
             'subdomain.not_in' => 'That subdomain is reserved. Please pick another.',
+            'subdomain.unique' => 'That subdomain is already in use by someone else. Please pick another.',
         ]);
 
         // Map UI source_type to DB source_type + initial template_data.

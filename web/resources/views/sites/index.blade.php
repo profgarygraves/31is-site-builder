@@ -46,6 +46,16 @@
                            class="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50">Leads</a>
                         <a href="{{ route('sites.edit', $site) }}"
                            class="px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-800">Edit</a>
+                        <form method="POST" action="{{ route('sites.destroy', $site) }}"
+                              onsubmit="return confirm('Delete the site &quot;{{ $site->subdomain }}&quot; and all its leads? This cannot be undone.')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                    class="px-3 py-1.5 text-sm border border-red-200 text-red-700 rounded hover:bg-red-50"
+                                    title="Delete this site">
+                                Delete
+                            </button>
+                        </form>
                     </div>
                 </div>
             @empty
