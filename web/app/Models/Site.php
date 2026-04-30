@@ -35,6 +35,7 @@ class Site extends Model
         return [
             'template_data' => 'array',
             'is_published' => 'boolean',
+            'user_id' => 'integer',
         ];
     }
 

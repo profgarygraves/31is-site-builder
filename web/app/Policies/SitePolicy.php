@@ -14,7 +14,7 @@ class SitePolicy
 
     public function view(User $user, Site $site): bool
     {
-        return $user->id === $site->user_id;
+        return (int) $user->id === (int) $site->user_id;
     }
 
     public function create(User $user): bool
@@ -24,11 +24,11 @@ class SitePolicy
 
     public function update(User $user, Site $site): bool
     {
-        return $user->id === $site->user_id;
+        return (int) $user->id === (int) $site->user_id;
     }
 
     public function delete(User $user, Site $site): bool
     {
-        return $user->id === $site->user_id;
+        return (int) $user->id === (int) $site->user_id;
     }
 }
