@@ -27,7 +27,7 @@
     <div style="font-size:48px;margin-bottom:12px;">✓</div>
     <h1>You're on the list!</h1>
     <p>Thanks for signing up — we'll be in touch the moment we have something to share.</p>
-    <a href="javascript:history.back()">← Back to the page</a>
+    <a href="/">← Back to the page</a>
   </div>
 </body>
 </html>
