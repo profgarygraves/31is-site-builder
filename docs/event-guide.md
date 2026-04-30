@@ -71,7 +71,7 @@ In rough priority order:
 
 1. **HTTPS via Cloudflare** — free wildcard SSL, 15-min setup
 2. **Auto-provision subdomains** — call cPanel UAPI from `SiteController::store` so adding students doesn't need cPanel clicks
-3. **AI image generation** — let students describe an image (e.g. *"hero shot of a hot sauce bottle on a wooden cutting board"*) and Claude / DALL-E / Stable Diffusion generates it. Save into the same `storage/sites/{id}/` directory image upload uses.
+3. **AI image generation (opt-in)** — let students describe an image (e.g. *"hero shot of a hot sauce bottle on a wooden cutting board"*) and Claude / DALL-E / Stable Diffusion generates it. **Always opt-in, never the default**: when a student picks "AI fills it in", the modal asks *"How do you want to handle product images?"* with three choices: (a) upload my own / paste URLs (default, free), (b) use stock placeholders for now (current behavior), (c) generate images with AI (extra credits). Save generated files into the same `storage/sites/{id}/` directory image upload uses, so the rest of the app doesn't care which path produced them.
 4. **More templates** — service-business, restaurant menu, freelancer portfolio
 5. **Per-site analytics** — page views, form-conversion rate
 6. **Lead webhooks** — push leads to Zapier / Slack / Google Sheets

@@ -127,7 +127,7 @@ class SiteController extends Controller
 
         return redirect()->route('sites.edit', $site)
             ->with('status', $data['source_type'] === 'ai'
-                ? 'Claude drafted your site. Review, edit, and publish when you are happy.'
+                ? "Claude drafted your text content. The hero images are placeholders — upload your own images or paste real URLs in the Hero section before publishing."
                 : 'Site created. Now add your content and publish.');
     }
 
